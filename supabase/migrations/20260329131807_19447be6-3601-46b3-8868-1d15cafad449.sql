@@ -1,0 +1,1 @@
+UPDATE frozen_user_roles SET role = 'superadmin' WHERE user_id = '3bc5539a-66b3-4dff-9094-1ec298a91980';
