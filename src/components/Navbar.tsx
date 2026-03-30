@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Menu, X, LogOut, User, ShoppingCart, LayoutDashboard } from 'lucide-react';
+import { Menu, X, LogOut, LayoutDashboard } from 'lucide-react';
 import { useState } from 'react';
 
 export default function Navbar() {
@@ -11,7 +11,8 @@ export default function Navbar() {
 
   const handleSignOut = async () => {
     await signOut();
-    navigate('/');
+    // Forzar reload completo para limpiar todo el estado
+    window.location.href = '/';
   };
 
   return (
