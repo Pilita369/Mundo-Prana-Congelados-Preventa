@@ -27,11 +27,11 @@ export default function Index() {
               <Link to="/menu">Ver Menú</Link>
             </Button>
             {user && role === 'cliente' ? (
-              <Button asChild size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+              <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90 font-bold">
                 <Link to="/pedido/nuevo">Hacer Pedido</Link>
               </Button>
             ) : !user ? (
-              <Button asChild size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+              <Button asChild size="lg" className="bg-white text-primary hover:bg-white/90 font-bold">
                 <Link to="/registro">Registrarse</Link>
               </Button>
             ) : null}
