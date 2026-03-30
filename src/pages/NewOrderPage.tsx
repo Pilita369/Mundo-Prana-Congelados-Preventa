@@ -12,12 +12,29 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { toast } from 'sonner';
-import { ShoppingCart, Minus, Plus } from 'lucide-react';
+import { ShoppingCart, Minus, Plus, Clock } from 'lucide-react';
 
 interface MenuItem {
   id: string;
   nombre: string;
   precio: number;
+}
+
+// Calcula la fecha estimada sumando días hábiles (lunes a viernes)
+function sumarDiasHabiles(fecha: Date, dias: number): Date {
+  const result = new Date(fecha);
+  let contados = 0;
+  while (contados < dias) {
+    result.setDate(result.getDate() + 1);
+    const dia = result.getDay();
+    if (dia !== 0 && dia !== 6) contados++; // 0=domingo, 6=sábado
+  }
+  return result;
+}
+
+// Regla de negocio: hasta 30 viandas = 7 días, 31 o más = 14 días
+function calcularDiasEspera(totalViandas: number): number {
+  return totalViandas <= 30 ? 7 : 14;
 }
 
 export default function NewOrderPage() {
@@ -48,6 +65,7 @@ export default function NewOrderPage() {
 
   const total = items.reduce((sum, item) => sum + (quantities[item.id] || 0) * item.precio, 0);
   const totalItems = Object.values(quantities).reduce((a, b) => a + b, 0);
+  const diasEspera = calcularDiasEspera(totalItems);
 
   const handleSubmit = async () => {
     if (totalItems === 0) { toast.error('Seleccioná al menos una vianda'); return; }
@@ -55,12 +73,10 @@ export default function NewOrderPage() {
     if (!clientId) { toast.error('Error: no se encontró tu perfil de cliente'); return; }
 
     setLoading(true);
-    const fechaEstimada = new Date();
-    let diasHabiles = 7;
-    while (diasHabiles > 0) {
-      fechaEstimada.setDate(fechaEstimada.getDate() + 1);
-      if (fechaEstimada.getDay() !== 0 && fechaEstimada.getDay() !== 6) diasHabiles--;
-    }
+
+    // Fecha estimada según cantidad de viandas
+    const dias = calcularDiasEspera(totalItems);
+    const fechaEstimada = sumarDiasHabiles(new Date(), dias);
 
     const { data: order, error } = await supabase.from('frozen_orders').insert({
       client_id: clientId,
@@ -91,7 +107,17 @@ export default function NewOrderPage() {
     await supabase.from('frozen_order_items').insert(orderItems);
     setLoading(false);
     toast.success('¡Pedido confirmado!');
-    navigate('/pedido/confirmacion', { state: { orderId: order.id, total, payMethod, bankInfo, fechaEstimada: fechaEstimada.toLocaleDateString('es-AR') } });
+    navigate('/pedido/confirmacion', {
+      state: {
+        orderId: order.id,
+        total,
+        totalViandas: totalItems,
+        diasEspera: dias,
+        payMethod,
+        bankInfo,
+        fechaEstimada: fechaEstimada.toLocaleDateString('es-AR'),
+      }
+    });
   };
 
   return (
@@ -125,6 +151,25 @@ export default function NewOrderPage() {
             );
           })}
         </div>
+
+        {/* Aviso de tiempo de espera — se actualiza en tiempo real */}
+        {totalItems > 0 && (
+          <Card className={`mb-4 border-2 ${diasEspera === 14 ? 'border-orange-400 bg-orange-50 dark:bg-orange-950/20' : 'border-secondary/40 bg-secondary/5'}`}>
+            <CardContent className="p-4 flex items-center gap-3">
+              <Clock className={`h-5 w-5 shrink-0 ${diasEspera === 14 ? 'text-orange-500' : 'text-secondary'}`} />
+              <div>
+                <p className="font-bold text-sm">
+                  {totalItems} vianda{totalItems > 1 ? 's' : ''} — tiempo estimado: <span className={diasEspera === 14 ? 'text-orange-500' : 'text-secondary'}>{diasEspera} días hábiles</span>
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {diasEspera === 7
+                    ? 'Pedidos de hasta 30 viandas: 7 días hábiles'
+                    : 'Pedidos de 31 viandas o más: 14 días hábiles'}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Delivery */}
         <Card className="mb-4">
@@ -178,7 +223,7 @@ export default function NewOrderPage() {
           <div className="fixed bottom-0 left-0 right-0 border-t bg-card p-4 shadow-lg z-50">
             <div className="container max-w-2xl flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">{totalItems} vianda{totalItems > 1 ? 's' : ''}</p>
+                <p className="text-sm text-muted-foreground">{totalItems} vianda{totalItems > 1 ? 's' : ''} · {diasEspera} días hábiles</p>
                 <p className="text-xl font-extrabold text-primary">{formatCurrency(total)}</p>
               </div>
               <Button size="lg" onClick={handleSubmit} disabled={loading} className="bg-secondary hover:bg-secondary/90 font-bold">
