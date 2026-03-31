@@ -16,17 +16,34 @@ interface MenuItem {
 export default function MenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMenu = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data, error: err } = await supabase
+        .from('frozen_menu_items')
+        .select('*')
+        .eq('activo', true)
+        .order('orden');
+
+      if (err) {
+        console.error('Error cargando menú:', err);
+        setError('No se pudo cargar el menú. Intentá de nuevo más tarde.');
+      } else {
+        setItems(data || []);
+      }
+    } catch (e) {
+      console.error('Error inesperado:', e);
+      setError('Error inesperado al cargar el menú.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    supabase
-      .from('frozen_menu_items')
-      .select('*')
-      .eq('activo', true)
-      .order('orden')
-      .then(({ data }) => {
-        setItems(data || []);
-        setLoading(false);
-      });
+    fetchMenu();
   }, []);
 
   return (
@@ -34,12 +51,26 @@ export default function MenuPage() {
       <div className="container max-w-4xl py-8 px-4">
         <h1 className="mb-2 text-3xl text-primary">Nuestro Menú</h1>
         <p className="mb-8 text-muted-foreground">Viandas congeladas listas para calentar y disfrutar</p>
-        
+
         {loading ? (
           <div className="grid gap-4 sm:grid-cols-2">
             {Array.from({ length: 6 }).map((_, i) => (
               <Card key={i} className="animate-pulse"><CardContent className="p-6 h-24" /></Card>
             ))}
+          </div>
+        ) : error ? (
+          <div className="text-center py-12">
+            <p className="text-destructive mb-4">{error}</p>
+            <button
+              onClick={fetchMenu}
+              className="text-sm text-primary underline hover:no-underline"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-muted-foreground">El menú estará disponible próximamente.</p>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
