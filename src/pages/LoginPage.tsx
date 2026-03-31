@@ -17,13 +17,33 @@ export default function LoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
+
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    
     if (error) {
-      toast.error(error.message);
+      setLoading(false);
+      toast.error('Email o contraseña incorrectos');
+      return;
+    }
+
+    // Buscar el rol del usuario
+    const { data: roleData } = await supabase
+      .from('frozen_user_roles')
+      .select('role')
+      .eq('user_id', data.user.id)
+      .maybeSingle();
+
+    setLoading(false);
+    toast.success('¡Bienvenido/a!');
+
+    // Redirigir según el rol
+    const role = roleData?.role;
+    if (role === 'superadmin') {
+      navigate('/admin');
+    } else if (role === 'admin_adjunto') {
+      navigate('/natalia');
     } else {
-      toast.success('¡Bienvenido/a!');
-      navigate('/');
+      navigate('/pedido/nuevo');
     }
   };
 
